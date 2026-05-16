@@ -21,7 +21,7 @@ face_mesh = mp_face_mesh.FaceMesh(
     min_tracking_confidence=0.5
 )
 
-def eye_process(eyes_landmarks,window_name):
+def eye_process(eyes_landmarks):
     eye_points=[]
     padding=20
     
@@ -41,41 +41,42 @@ def eye_process(eyes_landmarks,window_name):
     y_min=max(min([p[1] for p in eye_points]) - padding, 0)
     y_max=min(max([p[1] for p in eye_points]) + padding, h)
     
-    cv2.rectangle(
-        frame,
-        (x_min, y_min),
-        (x_max, y_max),
-        (255,0,0),
-        2
-        )
+
+    
     
     crop_eye=rgb_frame[y_min:y_max,x_min:x_max]
     
-    
-    
-    if crop_eye.size==0:
-        return None
+    if crop_eye.size == 0:
+        return None, None,None
     eye_resize=cv2.resize(crop_eye,(64,64))
-    cv2.imshow(window_name, eye_resize)
+    
     
     eye_norm=eye_resize/255.0
     
     eye = np.expand_dims(eye_norm, axis=0)
-    
-    return eye
+    return eye, eye_resize, (x_min, y_min, x_max, y_max)
 
 def check_eye(predict):
     pred_value = predict[0][0]
-    if pred_value>0.55:
+    if pred_value>0.5:
         return "opened"
     else:
         return "closed"
+    
+def draw_eye_box(eye_points,eye_class):
+    x_min,y_min,x_max,y_max=eye_points
+    color = (0,255,0) if eye_class=="opened" else (0,0,255)
+    cv2.rectangle(frame,(x_min,y_min),(x_max,y_max),color,2)
     
 left_eye = [33,133,160,159,158,144]
 right_eye = [362,263,387,386,385,373]
 
 
 cap=cv2.VideoCapture(0)
+
+cap.set(cv2.CAP_PROP_FRAME_WIDTH,1280)
+cap.set(cv2.CAP_PROP_FRAME_HEIGHT,720)
+
 counter=0
 
 if not cap.isOpened():
@@ -103,9 +104,23 @@ while True:
             
             
             h,w,c=frame.shape
-            final_left_eye=eye_process(left_eye,"left eye")
+            final_left_eye,left_eye_size,left_eye_points=eye_process(left_eye)
             
-            final_right_eye=eye_process(right_eye,"right_eye")
+            final_right_eye,right_eye_size,right_eye_points=eye_process(right_eye)
+            
+
+            
+
+            
+            
+            if final_left_eye is not None and final_right_eye is not None:
+                
+                left_eye_size = cv2.resize(left_eye_size, (150,150))
+                right_eye_size = cv2.resize(right_eye_size, (150,150))
+                
+                combined = np.hstack((left_eye_size, right_eye_size))
+                cv2.imshow("Both Eyes", combined)
+            
             
             if final_left_eye is not None:
                 
@@ -113,51 +128,58 @@ while True:
                 
                 left_class=check_eye(left_pred)
                 
-                cv2.putText(frame,
-                            f"L: {left_class}",
-                            (20,100),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            1,
-                            (0,255,0),
-                            2
-                            )
+                draw_eye_box(left_eye_points,left_class)
+
+                
+                left_confidence = left_pred[0][0]
+                cv2.putText(
+                    frame,
+                    f"L: {left_class} {left_confidence:.2f}",
+                    (20,100),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0,255,0),
+                    2)
+            
             if final_right_eye is not None:
                 
                 right_pred=eye_model.predict(final_right_eye,verbose=0)
                 
                 right_class=check_eye(right_pred)
                 
+                draw_eye_box(right_eye_points,right_class)
                 
+                
+                right_confidence = right_pred[0][0]
                 cv2.putText(
                     frame,
-                    f"R: {right_class}",
+                    f"R: {right_class} {right_confidence:.2f}",
                     (20,150),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     1,
                     (0,255,0),
-                    2
-                )
+                    2)
                                 
-            print(left_pred, right_pred)
+            if final_left_eye is not None and final_right_eye is not None:
+                print(left_pred, right_pred)
             
             if right_class=="closed" and left_class=="closed":
                 counter+=1
             
             else:
-                counter=0
+                counter = max(0, counter - 1)
+    
     else:
         counter=0
         print("no face detect")
         
-    if counter > 20:
-
+        
+    if counter > 8:
         if not pygame.mixer.music.get_busy():
-
             pygame.mixer.music.play()
-
     else:
-
         pygame.mixer.music.stop()
+        
     
     cv2.putText(
         frame,
@@ -168,19 +190,15 @@ while True:
         (0,0,255),
         2
     )
+    
     cv2.imshow("Final", frame)
     
-    
 
-
-    
     if cv2.waitKey(1) & 0xff==ord("q"):
         print("closed by user")
         break
     
   
-
-
 cap.release()
 cv2.destroyAllWindows()
                 
