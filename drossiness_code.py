@@ -8,8 +8,8 @@ pygame.init()
 pygame.mixer.init()
 pygame.mixer.music.load("alarm_sound.mp3")
 
-eye_model=load_model("eye_detect96.keras")
-yawn_model=load_model("yawn_model82.keras")
+eye_model=load_model("eye_detect97.keras")
+# yawn_model=load_model("yawn_model82.keras")
 
 
 mp_face_mesh=mp.solutions.face_mesh
