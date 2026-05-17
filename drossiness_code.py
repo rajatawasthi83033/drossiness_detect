@@ -20,15 +20,15 @@ def eye_process(eyes_landmarks):
 
     
     crop_eye=rgb_frame[y_min:y_max,x_min:x_max]
-    
-    if crop_eye.size == 0:
-        return None, None,None
-    eye_resize=cv2.resize(crop_eye,(64,64))
-    
-    
-    eye_norm=eye_resize/255.0
-    
+    crop_eye = cv2.convertScaleAbs(crop_eye, alpha=1.2, beta=20)
+
+    eye_resize = cv2.resize(crop_eye, (64,64))
+
+    eye_norm = eye_resize / 255.0
+
     eye = np.expand_dims(eye_norm, axis=0)
+
+
     return eye, eye_resize, (x_min, y_min, x_max, y_max)
 
 def check_eye(predict):
@@ -165,18 +165,18 @@ while True:
                 
                 left_class=check_eye(left_pred)
                 
-                draw_eye_box(left_eye_points,left_class)
+                # draw_eye_box(left_eye_points,left_class)
 
                 
                 left_confidence = left_pred[0][0]
-                cv2.putText(
-                    frame,
-                    f"L: {left_class} {left_confidence:.2f}",
-                    (20,100),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0,255,0),
-                    2)
+                # cv2.putText(
+                #     frame,
+                #     f"L: {left_class} {left_confidence:.2f}",
+                #     (20,100),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     1,
+                #     (0,255,0),
+                #     2)
             
             if final_right_eye is not None:
                 
@@ -184,18 +184,18 @@ while True:
                 
                 right_class=check_eye(right_pred)
                 
-                draw_eye_box(right_eye_points,right_class)
+                # draw_eye_box(right_eye_points,right_class)
                 
                 
                 right_confidence = right_pred[0][0]
-                cv2.putText(
-                    frame,
-                    f"R: {right_class} {right_confidence:.2f}",
-                    (20,150),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    1,
-                    (0,255,0),
-                    2)
+                # cv2.putText(
+                #     frame,
+                #     f"R: {right_class} {right_confidence:.2f}",
+                #     (20,150),
+                #     cv2.FONT_HERSHEY_SIMPLEX,
+                #     1,
+                #     (0,255,0),
+                #     2)
                                 
             # if final_left_eye is not None and final_right_eye is not None:
             #     print(left_pred, right_pred)
@@ -223,15 +223,15 @@ while True:
         pygame.mixer.music.stop()
         
     
-    cv2.putText(
-        frame,
-        f"Counter: {counter}",
-        (20,50),
-        cv2.FONT_HERSHEY_SIMPLEX,
-        1,
-        (0,0,255),
-        2
-    )
+    # cv2.putText(
+    #     frame,
+    #     f"Counter: {counter}",
+    #     (20,50),
+    #     cv2.FONT_HERSHEY_SIMPLEX,
+    #     1,
+    #     (0,0,255),
+    #     2
+    # )
     
     cv2.imshow("Final", frame)
     
