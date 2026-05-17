@@ -1,26 +1,3 @@
-import cv2
-from tensorflow.keras.models import load_model
-import numpy as np
-import pygame
-import mediapipe as mp
-
-pygame.init()
-pygame.mixer.init()
-pygame.mixer.music.load("alarm_sound.mp3")
-
-eye_model=load_model("eye_detect97.keras")
-# yawn_model=load_model("yawn_model82.keras")
-
-
-mp_face_mesh=mp.solutions.face_mesh
-face_mesh = mp_face_mesh.FaceMesh(
-    static_image_mode=False,
-    max_num_faces=1,
-    refine_landmarks=True,
-    min_detection_confidence=0.5,
-    min_tracking_confidence=0.5
-)
-
 def eye_process(eyes_landmarks):
     eye_points=[]
     padding=20
@@ -33,16 +10,14 @@ def eye_process(eyes_landmarks):
         
         eye_points.append((x,y))
         
-        cv2.circle(frame,(x,y),2,(0,255,00),-1)
+        # cv2.circle(frame,(x,y),2,(0,255,00),-1)
         
     x_min=max(min([p[0] for p in eye_points]) - padding, 0)
     x_max=min(max([p[0] for p in eye_points]) + padding, w)
 
     y_min=max(min([p[1] for p in eye_points]) - padding, 0)
     y_max=min(max([p[1] for p in eye_points]) + padding, h)
-    
 
-    
     
     crop_eye=rgb_frame[y_min:y_max,x_min:x_max]
     
@@ -58,18 +33,73 @@ def eye_process(eyes_landmarks):
 
 def check_eye(predict):
     pred_value = predict[0][0]
-    if pred_value>0.55:
+    if pred_value>0.40:
         return "opened"
     else:
         return "closed"
+    
+
     
 def draw_eye_box(eye_points,eye_class):
     x_min,y_min,x_max,y_max=eye_points
     color = (0,255,0) if eye_class=="opened" else (0,0,255)
     cv2.rectangle(frame,(x_min,y_min),(x_max,y_max),color,2)
+
+
+
+def distance(p1,p2):
+    dis=math.sqrt(((p2.x-p1.x)**2)+((p2.y-p1.y)**2))
+    return dis
+
+
+def calculate_EAR(landmarks,eye_points):
+    p1=landmarks[eye_points[0]]
+    p2=landmarks[eye_points[1]]
+    p3=landmarks[eye_points[2]]
+    p4=landmarks[eye_points[3]]
+    p5=landmarks[eye_points[4]]
+    p6=landmarks[eye_points[5]]
+
+
+    vartical1=distance(p2,p6)
+    vartical2=distance(p3,p5)
+    horizontal=distance(p1,p4)
+
+    EAR=(vartical1+vartical2)/(2.0*horizontal)
+
+    return EAR
+
+
+
+
+import cv2
+from tensorflow.keras.models import load_model
+import numpy as np
+import pygame
+import mediapipe as mp
+import math
+
+pygame.init()
+pygame.mixer.init()
+pygame.mixer.music.load("alarm_sound.mp3")
+
+eye_model=load_model("eye_detect97.keras")
+# yawn_model=load_model("yawn_model82.keras")
+
+
+mp_face_mesh=mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.7
+)
+
+
     
-left_eye = [33,133,160,159,158,144]
-right_eye = [362,263,387,386,385,373]
+left_eye = [33,160,158,133,153,144]
+right_eye = [362,385,387,263,373,380]
 
 
 cap=cv2.VideoCapture(0)
@@ -102,7 +132,14 @@ while True:
             left_class = "opened"
             right_class = "opened"
             
-            
+            left_EAR=calculate_EAR(face_landmarks.landmark,left_eye)
+            right_EAR=calculate_EAR(face_landmarks.landmark,right_eye)
+
+            # print(f"LEFT EAR = {left_EAR}, RIGHT EAR = {right_EAR}")
+
+
+
+
             h,w,c=frame.shape
             final_left_eye,left_eye_size,left_eye_points=eye_process(left_eye)
             
@@ -160,12 +197,17 @@ while True:
                     (0,255,0),
                     2)
                                 
-            if final_left_eye is not None and final_right_eye is not None:
-                print(left_pred, right_pred)
-            
-            if right_class=="closed" and left_class=="closed":
-                counter+=1
-            
+            # if final_left_eye is not None and final_right_eye is not None:
+            #     print(left_pred, right_pred)
+
+
+
+            model_pred=(right_class=="closed" and left_class=="closed")
+
+            avg_EAR = (left_EAR + right_EAR) / 2
+
+            if model_pred or avg_EAR < 0.22:
+                counter += 1
             else:
                 counter = 0
     
