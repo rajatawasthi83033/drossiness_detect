@@ -58,7 +58,7 @@ def eye_process(eyes_landmarks):
 
 def check_eye(predict):
     pred_value = predict[0][0]
-    if pred_value>0.5:
+    if pred_value>0.55:
         return "opened"
     else:
         return "closed"
@@ -167,14 +167,14 @@ while True:
                 counter+=1
             
             else:
-                counter = max(0, counter - 1)
+                counter = 0
     
     else:
         counter=0
         print("no face detect")
         
         
-    if counter > 8:
+    if counter > 5:
         if not pygame.mixer.music.get_busy():
             pygame.mixer.music.play()
     else:
